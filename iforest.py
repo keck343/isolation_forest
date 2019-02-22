@@ -56,8 +56,9 @@ class inTreeNode:
         self.split_att = split_att
 
 class exTreeNode:
-    def __init__(self, size=None):
+    def __init__(self, size=None, depth=None):
         self.size = size
+        self.depth = depth
 
 
 class IsolationTree:
@@ -73,24 +74,25 @@ class IsolationTree:
         If you are working on an improved algorithm, check parameter "improved"
         and switch to your new functionality else fall back on your original code.
         """
+        e = 1
         if self.e >= self.height_limit or len(X) <= 1:
-            return exTreeNode(len(X))
+            e += 1
+            return exTreeNode(len(X), depth=e)
         else:
+            e += 1
             q = np.random.randint(len(X))
             column = sorted(X[:,q])
             p = random.choice(column)
             X_left = X[p>X[:,q]]
             X_right = X[p<=X[:,q]]
             self.root = inTreeNode(split_point=p, split_att=q,
-                                left=IsolationTree(self.height_limit-self.e).fit(X_left),
-                                right=IsolationTree(self.height_limit-self.e).fit(X_right))
-        self.e += 1
+                                left=IsolationTree(self.height_limit-e).fit(X_left),  ## NEEDS TO BE ALL THE COLUMNS
+                                right=IsolationTree(self.height_limit-e).fit(X_right))
+
 
         return self.root
 
 # https://stackoverflow.com/questions/13066249/filtering-lines-in-a-numpy-array-according-to-values-in-a-range
-
-
 
 def find_TPR_threshold(y, scores, desired_TPR):
     """

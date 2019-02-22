@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import random
 from sklearn.metrics import confusion_matrix
 
 # Follows algo from https://cs.nju.edu.cn/zhouzh/zhouzh.files/publication/icdm08b.pdf
@@ -47,44 +48,48 @@ class IsolationTreeEnsemble:
         "A shorthand for calling anomaly_score() and predict_from_anomaly_scores()."
 
 
-class TreeNode:
-    def __init__(self, value, left=None, right=None):
-        self.value = value
+class inTreeNode:
+    def __init__(self,  split_point, left=None, right=None, split_att=None):
+        self.split_point = split_point
         self.left = left
         self.right = right
+        self.split_att = split_att
+
+class exTreeNode:
+    def __init__(self, size=None):
+        self.size = size
 
 
-# A root node has children. Those children can be complete sub trees
 class IsolationTree:
     def __init__(self, height_limit):
         self.height_limit = height_limit
-        self.root = None
+        self.e = 0
+        # self.root = None
 
-
-    def fit(self, X:np.ndarray, improved=False):  # is this only for one layer of tree??
+    def fit(self, X:np.ndarray, improved=False):
         """
         Given a 2D matrix of observations, create an isolation tree. Set field
         self.root to the root of that tree and return it.
-
         If you are working on an improved algorithm, check parameter "improved"
         and switch to your new functionality else fall back on your original code.
         """
-        e = 0
-
-        if e >= self.height_limit or abs(len(X)) <= 1:
-            self.root = TreeNode(value=X)
+        if self.e >= self.height_limit or len(X) <= 1:
+            return exTreeNode(len(X))
         else:
-            col = np.random.randint(len(X[0]))
-            q = sorted(X[:, col], reverse=True)
-            split = np.random.randint(len(q))
-            self.root = TreeNode(value=split, left=q[split:], right=q[0:split])
-            if len(TreeNode.left) >= 1:
-                fit(TreeNode.left)
-            if len(TreeNode.right) >= 1:
-                fit(TreeNode.right)
-            e += 1
-            ## add something to recurse?
+            q = np.random.randint(len(X))
+            column = sorted(X[:,q])
+            p = random.choice(column)
+            X_left = X[p>X[:,q]]
+            X_right = X[p<=X[:,q]]
+            self.root = inTreeNode(split_point=p, split_att=q,
+                                left=IsolationTree(self.height_limit-self.e).fit(X_left),
+                                right=IsolationTree(self.height_limit-self.e).fit(X_right))
+        self.e += 1
+
         return self.root
+
+# https://stackoverflow.com/questions/13066249/filtering-lines-in-a-numpy-array-according-to-values-in-a-range
+
 
 
 def find_TPR_threshold(y, scores, desired_TPR):

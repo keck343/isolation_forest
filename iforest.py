@@ -25,14 +25,15 @@ class IsolationTreeEnsemble:
 
         return self
 
-    def c(self, size):
+    def c(self):
+        size = self.sample_size
         if size <= 2:  # could be wrong?  Test with bigger data
             return 1
         return 2*(np.log(size-1)+0.5772156649)-2*(size-1)/size
 
     def single_path_len(self, tree, x_i, e=0):  # single tree and single element in X
         if isinstance(tree, exTreeNode):
-            return e + self.c(tree.size)
+            return e + self.c()
         a = tree.split_att # index of column of X
         if x_i[a] < tree.split_point:
             return self.single_path_len(tree.left, x_i, e + 1)
@@ -62,7 +63,7 @@ class IsolationTreeEnsemble:
         Given a 2D matrix of observations, X, compute the anomaly score
         for each x_i observation, returning an ndarray of them.
         """
-        
+
 
 
     def predict_from_anomaly_scores(self, scores:np.ndarray, threshold:float) -> np.ndarray:

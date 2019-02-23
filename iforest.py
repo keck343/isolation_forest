@@ -20,9 +20,27 @@ class IsolationTreeEnsemble:
         if isinstance(X, pd.DataFrame):
             X = X.values
         for i in range(n_trees):
-            self.trees.append(IsolationTree.fit(X))
+            X_prime = X[np.random.choice(X.shape[0], self.sample_size, replace=False)]
+            self.trees.append(IsolationTree.fit(X_prime))
 
-        return self  # WHY?
+        return self
+
+    def c(sample_size):
+        if sample_size == 2:
+            return 1
+        else:
+            return (2(np.log(sample_size-1)+0.5772156649)-2(sample_size-1))/sample_size
+
+    def avg_path_single(self, tree, x_i, e=0):  # single tree and single element in X
+        if isinstance(tree, exTreeNode):
+            return e + c(self.sample_size)
+        a = tree.split_att # index of column of X
+        if x_i[:,a] < tree.split_point:
+            return avg_path_single(x_i, tree.left, e + 1)
+        if x_i[:,a] >= tree.split_point:
+            return avg_path_single(x_i, tree.right, e + 1)
+
+
 
     def path_length(self, X:np.ndarray) -> np.ndarray:
         """
@@ -31,12 +49,23 @@ class IsolationTreeEnsemble:
         tree in self.trees then compute the average for each x_i.  Return an
         ndarray of shape (len(X),1).
         """
+        avg_lens = []
+        for i in range(self.n_trees):
+            tree = self.trees[i]
+            e = 0 # current path length
+            elemn_lens = [] # lengths for current elem
+            for x_i,_ in np.ndenumerate(X):
+                elemn_lens.append(avg_path_single(tree, np.array(x_i)))
+            avg_lens.append(np.mean(elemn_lens))
+        return np.array(avg_lens)
+
 
     def anomaly_score(self, X:np.ndarray) -> np.ndarray:
         """
         Given a 2D matrix of observations, X, compute the anomaly score
         for each x_i observation, returning an ndarray of them.
         """
+
 
     def predict_from_anomaly_scores(self, scores:np.ndarray, threshold:float) -> np.ndarray:
         """
@@ -47,6 +76,7 @@ class IsolationTreeEnsemble:
     def predict(self, X:np.ndarray, threshold:float) -> np.ndarray:
         "A shorthand for calling anomaly_score() and predict_from_anomaly_scores()."
 
+## You also have to compute the number of nodes as you construct trees. The scoring test rig uses tree field n_nodes:
 
 class inTreeNode:
     def __init__(self,  split_point, left=None, right=None, split_att=None):
@@ -59,6 +89,26 @@ class exTreeNode:
     def __init__(self, size=None, depth=None):
         self.size = size
         self.depth = depth
+
+
+class inTreeNode:
+    def __init__(self,  split_point, left=None, right=None, split_att=None):
+        self.split_point = split_point
+        self.left = left
+        self.right = right
+        self.split_att = split_att
+        self.value = (split_att, split_point)
+
+    def __repr__(self):
+        return self.value.__repr__()
+
+class exTreeNode:
+    def __init__(self, size=None, depth=None):
+        self.size = size
+        self.depth = depth
+
+    def __repr__(self):
+        return self.size.__repr__()
 
 
 class IsolationTree:
@@ -80,7 +130,7 @@ class IsolationTree:
             return exTreeNode(len(X), depth=e)
         else:
             e += 1
-            q = np.random.randint(len(X))
+            q = np.random.randint(X.shape[1])
             column = sorted(X[:,q])
             p = random.choice(column)
             X_left = X[p>X[:,q]]
@@ -93,6 +143,7 @@ class IsolationTree:
         return self.root
 
 # https://stackoverflow.com/questions/13066249/filtering-lines-in-a-numpy-array-according-to-values-in-a-range
+# https://stackoverflow.com/questions/14262654/numpy-get-random-set-of-rows-from-2d-array
 
 def find_TPR_threshold(y, scores, desired_TPR):
     """

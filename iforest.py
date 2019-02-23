@@ -63,6 +63,11 @@ class IsolationTreeEnsemble:
         Given a 2D matrix of observations, X, compute the anomaly score
         for each x_i observation, returning an ndarray of them.
         """
+        scores = []
+        path_X = self.path_length(X)
+        for i in range(path_X.shape[0]):
+            scores.append(2**(-1*(path_X[i]/self.c())))
+        return np.array(scores)
 
 
 

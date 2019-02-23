@@ -19,27 +19,25 @@ class IsolationTreeEnsemble:
         """
         if isinstance(X, pd.DataFrame):
             X = X.values
-        for i in range(n_trees):
+        for i in range(self.n_trees):
             X_prime = X[np.random.choice(X.shape[0], self.sample_size, replace=False)]
-            self.trees.append(IsolationTree.fit(X_prime))
+            self.trees.append(IsolationTree(height_limit=10).fit(X=X_prime))
 
         return self
 
-    def c(sample_size):
-        if sample_size == 2:
+    def c(self, size):
+        if size <= 2:  # could be wrong?  Test with bigger data
             return 1
-        else:
-            return (2(np.log(sample_size-1)+0.5772156649)-2(sample_size-1))/sample_size
+        return 2*(np.log(size-1)+0.5772156649)-2*(size-1)/size
 
-    def avg_path_single(self, tree, x_i, e=0):  # single tree and single element in X
+    def single_path_len(self, tree, x_i, e=0):  # single tree and single element in X
         if isinstance(tree, exTreeNode):
-            return e + c(self.sample_size)
+            return e + self.c(tree.size)
         a = tree.split_att # index of column of X
-        if x_i[:,a] < tree.split_point:
-            return avg_path_single(x_i, tree.left, e + 1)
-        if x_i[:,a] >= tree.split_point:
-            return avg_path_single(x_i, tree.right, e + 1)
-
+        if x_i[a] < tree.split_point:
+            return self.single_path_len(tree.left, x_i, e + 1)
+        if x_i[a] >= tree.split_point:
+            return self.single_path_len(tree.right, x_i, e + 1)
 
 
     def path_length(self, X:np.ndarray) -> np.ndarray:
@@ -50,13 +48,12 @@ class IsolationTreeEnsemble:
         ndarray of shape (len(X),1).
         """
         avg_lens = []
-        for i in range(self.n_trees):
-            tree = self.trees[i]
-            e = 0 # current path length
-            elemn_lens = [] # lengths for current elem
-            for x_i,_ in np.ndenumerate(X):
-                elemn_lens.append(avg_path_single(tree, np.array(x_i)))
-            avg_lens.append(np.mean(elemn_lens))
+        for i in range(X.shape[0]):
+            e = 0
+            x_i_lens = []
+            for t in range(self.n_trees):
+                x_i_lens.append(self.single_path_len(self.trees[t], X[i]))
+            avg_lens.append(np.mean(x_i_lens))
         return np.array(avg_lens)
 
 
@@ -65,6 +62,7 @@ class IsolationTreeEnsemble:
         Given a 2D matrix of observations, X, compute the anomaly score
         for each x_i observation, returning an ndarray of them.
         """
+        
 
 
     def predict_from_anomaly_scores(self, scores:np.ndarray, threshold:float) -> np.ndarray:
@@ -135,7 +133,7 @@ class IsolationTree:
             p = random.choice(column)
             X_left = X[p>X[:,q]]
             X_right = X[p<=X[:,q]]
-            self.root = inTreeNode(split_point=p, split_att=q,
+            self.root = inTreeNode(split_point=p, split_att= q,
                                 left=IsolationTree(self.height_limit-e).fit(X_left),  ## NEEDS TO BE ALL THE COLUMNS
                                 right=IsolationTree(self.height_limit-e).fit(X_right))
 

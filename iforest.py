@@ -48,6 +48,8 @@ class IsolationTreeEnsemble:
         tree in self.trees then compute the average for each x_i.  Return an
         ndarray of shape (len(X),1).
         """
+        if isinstance(X, pd.DataFrame):
+            X = X.values
         avg_lens = []
         for i in range(X.shape[0]):
             e = 0
@@ -63,6 +65,8 @@ class IsolationTreeEnsemble:
         Given a 2D matrix of observations, X, compute the anomaly score
         for each x_i observation, returning an ndarray of them.
         """
+        if isinstance(X, pd.DataFrame):
+            X = X.values
         scores = []
         path_X = self.path_length(X)
         for i in range(path_X.shape[0]):
@@ -76,31 +80,31 @@ class IsolationTreeEnsemble:
         Given an array of scores and a score threshold, return an array of
         the predictions: 1 for any score >= the threshold and 0 otherwise.
         """
+        for i in range(scores.shape[0]):
+            if scores[i] >= threshold:
+                scores[i] = 1
+            else:
+                scores[i] = 0
+        return scores
 
     def predict(self, X:np.ndarray, threshold:float) -> np.ndarray:
         "A shorthand for calling anomaly_score() and predict_from_anomaly_scores()."
+        scores = self.anomaly_score(X)
+        predictions = self.predict_from_anomaly_scores(scores=scores, threshold=threshold)
+        return predictions
 
 ## You also have to compute the number of nodes as you construct trees. The scoring test rig uses tree field n_nodes:
+#n_nodes = sum([t.n_nodes for t in it.trees])
+#print(f"INFO {datafile} {n_nodes} total nodes in {n_trees} trees")
+
 
 class inTreeNode:
-    def __init__(self,  split_point, left=None, right=None, split_att=None):
+    def __init__(self,  split_point, left=None, right=None, split_att=None, n_nodes=1):
         self.split_point = split_point
         self.left = left
         self.right = right
         self.split_att = split_att
-
-class exTreeNode:
-    def __init__(self, size=None, depth=None):
-        self.size = size
-        self.depth = depth
-
-
-class inTreeNode:
-    def __init__(self,  split_point, left=None, right=None, split_att=None):
-        self.split_point = split_point
-        self.left = left
-        self.right = right
-        self.split_att = split_att
+        self.n_nodes = n_nodes
         self.value = (split_att, split_point)
 
     def __repr__(self):
@@ -116,8 +120,9 @@ class exTreeNode:
 
 
 class IsolationTree:
-    def __init__(self, height_limit):
+    def __init__(self, height_limit, n_nodes=1):
         self.height_limit = height_limit
+        self.n_nodes = n_nodes
         self.e = 0
         # self.root = None
 
@@ -128,21 +133,23 @@ class IsolationTree:
         If you are working on an improved algorithm, check parameter "improved"
         and switch to your new functionality else fall back on your original code.
         """
-        e = 1
         if self.e >= self.height_limit or len(X) <= 1:
-            e += 1
-            return exTreeNode(len(X), depth=e)
+            self.e += 1
+            self.n_nodes += 1
+            return exTreeNode(len(X), depth=self.e)
         else:
-            e += 1
+            self.e += 1
+            self.n_nodes += 1
             q = np.random.randint(X.shape[1])
             column = sorted(X[:,q])
             p = random.choice(column)
             X_left = X[p>X[:,q]]
             X_right = X[p<=X[:,q]]
             self.root = inTreeNode(split_point=p, split_att= q,
-                                left=IsolationTree(self.height_limit-e).fit(X_left),  ## NEEDS TO BE ALL THE COLUMNS
-                                right=IsolationTree(self.height_limit-e).fit(X_right))
+                                left=IsolationTree(self.height_limit-self.e, n_nodes=self.n_nodes).fit(X_left),  ## NEEDS TO BE ALL THE COLUMNS
+                                right=IsolationTree(self.height_limit-self.e, n_nodes=self.n_nodes).fit(X_right))
 
+            self.root.n_nodes = self.n_nodes
 
         return self.root
 
@@ -158,3 +165,18 @@ def find_TPR_threshold(y, scores, desired_TPR):
     """
     ## scikit - learn's confusion_matrix() (for use in find_TPR_threshold()).
     ...
+    threshold = 1.0
+    binary_scores = [1 if score >= threshold else 0 for score in scores]
+    confusion = confusion_matrix(y_true=y, y_pred=binary_scores)
+    TN, FP, FN, TP = confusion.flat
+    TPR = TP / (TP + FN)
+    FPR = FP / (FP + TN)
+    while TPR < desired_TPR and threshold != 0:
+        binary_scores = [1 if score >= threshold else 0 for score in scores]
+        confusion = confusion_matrix(y_true=y, y_pred=binary_scores)
+        TN, FP, FN, TP = confusion.flat
+        TPR = TP / (TP + FN)
+        FPR = FP / (FP + TN)
+        threshold -= 0.01
+
+    return threshold, FPR

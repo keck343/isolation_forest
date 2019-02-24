@@ -25,20 +25,24 @@ class IsolationTreeEnsemble:
 
         return self
 
-    def c(self):
-        size = self.sample_size
+    def c(self, size):
         if size <= 2:  # could be wrong?  Test with bigger data
             return 1
         return 2*(np.log(size-1)+0.5772156649)-2*(size-1)/size
 
-    def single_path_len(self, tree, x_i, e=0):  # single tree and single element in X
+    def single_path_len(self, tree, x_i): # single tree and single element in X
+        e = 0
         if isinstance(tree, exTreeNode):
-            return e + self.c()
+            e += 1
+            #print(tree.size)
+            return e + self.c(tree.size)
         a = tree.split_att # index of column of X
         if x_i[a] < tree.split_point:
-            return self.single_path_len(tree.left, x_i, e + 1)
+            e += 1
+            return self.single_path_len(tree.left, x_i)
         if x_i[a] >= tree.split_point:
-            return self.single_path_len(tree.right, x_i, e + 1)
+            e += 1
+            return self.single_path_len(tree.right, x_i)
 
 
     def path_length(self, X:np.ndarray) -> np.ndarray:
@@ -48,8 +52,8 @@ class IsolationTreeEnsemble:
         tree in self.trees then compute the average for each x_i.  Return an
         ndarray of shape (len(X),1).
         """
-        if isinstance(X, pd.DataFrame):
-            X = X.values
+        #if isinstance(X, pd.DataFrame):
+            #X = X.values
         avg_lens = []
         for i in range(X.shape[0]):
             e = 0
@@ -70,7 +74,7 @@ class IsolationTreeEnsemble:
         scores = []
         path_X = self.path_length(X)
         for i in range(path_X.shape[0]):
-            scores.append(2**(-1*(path_X[i]/self.c())))
+            scores.append(2**(-1*(path_X[i]/self.c(self.sample_size))))
         return np.array(scores)
 
 
@@ -99,7 +103,7 @@ class IsolationTreeEnsemble:
 
 
 class inTreeNode:
-    def __init__(self,  split_point, left=None, right=None, split_att=None, n_nodes=1):
+    def __init__(self,  split_point, left=None, right=None, split_att=None, n_nodes=0):
         self.split_point = split_point
         self.left = left
         self.right = right
@@ -120,10 +124,10 @@ class exTreeNode:
 
 
 class IsolationTree:
-    def __init__(self, height_limit, n_nodes=1):
+    def __init__(self, height_limit, n_nodes=0, e = 0):
         self.height_limit = height_limit
         self.n_nodes = n_nodes
-        self.e = 0
+        self.e = e
         # self.root = None
 
     def fit(self, X:np.ndarray, improved=False):
@@ -136,7 +140,7 @@ class IsolationTree:
         if self.e >= self.height_limit or len(X) <= 1:
             self.e += 1
             self.n_nodes += 1
-            return exTreeNode(len(X), depth=self.e)
+            return exTreeNode(size=len(X), depth=self.e+1)
         else:
             self.e += 1
             self.n_nodes += 1
@@ -146,10 +150,11 @@ class IsolationTree:
             X_left = X[p>X[:,q]]
             X_right = X[p<=X[:,q]]
             self.root = inTreeNode(split_point=p, split_att= q,
-                                left=IsolationTree(self.height_limit-self.e, n_nodes=self.n_nodes).fit(X_left),  ## NEEDS TO BE ALL THE COLUMNS
-                                right=IsolationTree(self.height_limit-self.e, n_nodes=self.n_nodes).fit(X_right))
+                                left=IsolationTree(height_limit=self.height_limit-self.e, n_nodes=self.n_nodes, e=self.e+1).fit(X_left),  ## NEEDS TO BE ALL THE COLUMNS
+                                right=IsolationTree(height_limit=self.height_limit-self.e, n_nodes=self.n_nodes, e=self.e+1).fit(X_right))
 
             self.root.n_nodes = self.n_nodes
+
 
         return self.root
 
@@ -178,5 +183,10 @@ def find_TPR_threshold(y, scores, desired_TPR):
         TPR = TP / (TP + FN)
         FPR = FP / (FP + TN)
         threshold -= 0.01
+        print("the desired TPR", desired_TPR)
+        print("Current threshold", threshold)
+        print("Current TPR", TPR)
+
+    print("Returned", threshold, FPR)
 
     return threshold, FPR

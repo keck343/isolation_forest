@@ -26,23 +26,23 @@ class IsolationTreeEnsemble:
         return self
 
     def c(self, size):
-        if size <= 2:  # could be wrong?  Test with bigger data
+        if size <= 2:  # could be wrong?  Get zeros...
             return 1
         return 2*(np.log(size-1)+0.5772156649)-2*(size-1)/size
 
-    def single_path_len(self, tree, x_i): # single tree and single element in X
-        e = 0
+    def single_path_len(self, tree, x_i, e=0): # single tree and single element in X
+        #e = 0
         if isinstance(tree, exTreeNode):
-            e += 1
-            #print(tree.size)
+            #e += 1
+            print("size", tree.size)
+            print("e", e)
+            print("c", self.c(tree.size))
             return e + self.c(tree.size)
         a = tree.split_att # index of column of X
         if x_i[a] < tree.split_point:
-            e += 1
-            return self.single_path_len(tree.left, x_i)
+            return self.single_path_len(tree.left, x_i, e+1)
         if x_i[a] >= tree.split_point:
-            e += 1
-            return self.single_path_len(tree.right, x_i)
+            return self.single_path_len(tree.right, x_i, e+1)
 
 
     def path_length(self, X:np.ndarray) -> np.ndarray:
@@ -176,13 +176,16 @@ def find_TPR_threshold(y, scores, desired_TPR):
     TN, FP, FN, TP = confusion.flat
     TPR = TP / (TP + FN)
     FPR = FP / (FP + TN)
-    while TPR < desired_TPR and threshold != 0:
+    while TPR < desired_TPR and threshold != 0: # <
         binary_scores = [1 if score >= threshold else 0 for score in scores]
         confusion = confusion_matrix(y_true=y, y_pred=binary_scores)
         TN, FP, FN, TP = confusion.flat
         TPR = TP / (TP + FN)
         FPR = FP / (FP + TN)
-        threshold -= 0.01
+        if TPR == 0.0:
+            threshold -= 0.01
+        else:
+            threshold -= 0.001
         print("the desired TPR", desired_TPR)
         print("Current threshold", threshold)
         print("Current TPR", TPR)

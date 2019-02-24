@@ -171,9 +171,10 @@ def find_TPR_threshold(y, scores, desired_TPR):
         TN, FP, FN, TP = confusion.flat
         TPR = TP / (TP + FN)
         FPR = FP / (FP + TN)
-        if TPR == 0.0:
-            threshold -= 0.01
-        else:
-            threshold -= 0.001
+        threshold -= 0.001
+        #if TPR == 0.0:
+            #threshold -= 0.01
+        #else:
+            #threshold -= 0.001
 
     return threshold, FPR

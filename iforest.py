@@ -21,7 +21,7 @@ class IsolationTreeEnsemble:
             X = X.values
         for i in range(self.n_trees):
             X_prime = X[np.random.choice(X.shape[0], self.sample_size, replace=False)]
-            self.trees.append(IsolationTree(height_limit=10).fit(X=X_prime))
+            self.trees.append(IsolationTree(height_limit=np.log2(self.sample_size), e=0).fit(X=X_prime))
 
         return self
 
@@ -33,10 +33,11 @@ class IsolationTreeEnsemble:
     def single_path_len(self, tree, x_i, e=0): # single tree and single element in X
         #e = 0
         if isinstance(tree, exTreeNode):
-            #e += 1
-            print("size", tree.size)
-            print("e", e)
-            print("c", self.c(tree.size))
+            e += 1
+           # print("size", tree.size)
+           # print("e", e)
+           # print("c", self.c(tree.size))
+           # print("depth", tree.depth)
             return e + self.c(tree.size)
         a = tree.split_att # index of column of X
         if x_i[a] < tree.split_point:
@@ -124,7 +125,7 @@ class exTreeNode:
 
 
 class IsolationTree:
-    def __init__(self, height_limit, n_nodes=0, e = 0):
+    def __init__(self, height_limit, n_nodes=1, e=1):  #n_nodes= 0, e = 0
         self.height_limit = height_limit
         self.n_nodes = n_nodes
         self.e = e
@@ -140,19 +141,21 @@ class IsolationTree:
         if self.e >= self.height_limit or len(X) <= 1:
             self.e += 1
             self.n_nodes += 1
+            #print(self.e)
             return exTreeNode(size=len(X), depth=self.e+1)
         else:
             self.e += 1
             self.n_nodes += 1
             q = np.random.randint(X.shape[1])
-            column = sorted(X[:,q])
-            p = random.choice(column)
+            column = X[:,q]  #sorted(X[:,q])
+            #p = random.choice(column)
+            p = np.random.uniform(min(column), max(column))
             X_left = X[p>X[:,q]]
             X_right = X[p<=X[:,q]]
             self.root = inTreeNode(split_point=p, split_att= q,
-                                left=IsolationTree(height_limit=self.height_limit-self.e, n_nodes=self.n_nodes, e=self.e+1).fit(X_left),  ## NEEDS TO BE ALL THE COLUMNS
-                                right=IsolationTree(height_limit=self.height_limit-self.e, n_nodes=self.n_nodes, e=self.e+1).fit(X_right))
-
+                                left=IsolationTree(height_limit=self.height_limit-1, n_nodes=self.n_nodes, e=self.e+1).fit(X_left),  ## NEEDS TO BE ALL THE COLUMNS
+                                right=IsolationTree(height_limit=self.height_limit-1, n_nodes=self.n_nodes, e=self.e+1).fit(X_right))
+# You do pass along the max height as part of the function, and every time you make a recursive call, you decrease the max height by 1.
             self.root.n_nodes = self.n_nodes
 
 
@@ -186,9 +189,9 @@ def find_TPR_threshold(y, scores, desired_TPR):
             threshold -= 0.01
         else:
             threshold -= 0.001
-        print("the desired TPR", desired_TPR)
-        print("Current threshold", threshold)
-        print("Current TPR", TPR)
+        #print("the desired TPR", desired_TPR)
+        #print("Current threshold", threshold)
+        #print("Current TPR", TPR)
 
     print("Returned", threshold, FPR)
 

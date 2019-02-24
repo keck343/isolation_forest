@@ -1,6 +1,5 @@
 import numpy as np
 import pandas as pd
-import random
 from sklearn.metrics import confusion_matrix
 
 # Follows algo from https://cs.nju.edu.cn/zhouzh/zhouzh.files/publication/icdm08b.pdf
@@ -26,18 +25,13 @@ class IsolationTreeEnsemble:
         return self
 
     def c(self, size):
-        if size <= 2:  # could be wrong?  Get zeros...
+        if size <= 2:
             return 1
         return 2*(np.log(size-1)+0.5772156649)-2*(size-1)/size
 
     def single_path_len(self, tree, x_i, e=0): # single tree and single element in X
-        #e = 0
         if isinstance(tree, exTreeNode):
             e += 1
-           # print("size", tree.size)
-           # print("e", e)
-           # print("c", self.c(tree.size))
-           # print("depth", tree.depth)
             return e + self.c(tree.size)
         a = tree.split_att # index of column of X
         if x_i[a] < tree.split_point:
@@ -53,8 +47,7 @@ class IsolationTreeEnsemble:
         tree in self.trees then compute the average for each x_i.  Return an
         ndarray of shape (len(X),1).
         """
-        #if isinstance(X, pd.DataFrame):
-            #X = X.values
+
         avg_lens = []
         for i in range(X.shape[0]):
             e = 0
@@ -97,10 +90,6 @@ class IsolationTreeEnsemble:
         scores = self.anomaly_score(X)
         predictions = self.predict_from_anomaly_scores(scores=scores, threshold=threshold)
         return predictions
-
-## You also have to compute the number of nodes as you construct trees. The scoring test rig uses tree field n_nodes:
-#n_nodes = sum([t.n_nodes for t in it.trees])
-#print(f"INFO {datafile} {n_nodes} total nodes in {n_trees} trees")
 
 
 class inTreeNode:
@@ -147,15 +136,13 @@ class IsolationTree:
             self.e += 1
             self.n_nodes += 1
             q = np.random.randint(X.shape[1])
-            column = X[:,q]  #sorted(X[:,q])
-            #p = random.choice(column)
+            column = X[:,q]
             p = np.random.uniform(min(column), max(column))
             X_left = X[p>X[:,q]]
             X_right = X[p<=X[:,q]]
             self.root = inTreeNode(split_point=p, split_att= q,
                                 left=IsolationTree(height_limit=self.height_limit-1, n_nodes=self.n_nodes, e=self.e+1).fit(X_left),  ## NEEDS TO BE ALL THE COLUMNS
                                 right=IsolationTree(height_limit=self.height_limit-1, n_nodes=self.n_nodes, e=self.e+1).fit(X_right))
-# You do pass along the max height as part of the function, and every time you make a recursive call, you decrease the max height by 1.
             self.root.n_nodes = self.n_nodes
 
 
@@ -171,7 +158,6 @@ def find_TPR_threshold(y, scores, desired_TPR):
     and FPR to see if we've reached to the desired TPR. If so, return the
     score threshold and FPR.
     """
-    ## scikit - learn's confusion_matrix() (for use in find_TPR_threshold()).
     ...
     threshold = 1.0
     binary_scores = [1 if score >= threshold else 0 for score in scores]
@@ -179,7 +165,7 @@ def find_TPR_threshold(y, scores, desired_TPR):
     TN, FP, FN, TP = confusion.flat
     TPR = TP / (TP + FN)
     FPR = FP / (FP + TN)
-    while TPR < desired_TPR and threshold != 0: # <
+    while TPR < desired_TPR and threshold != 0:
         binary_scores = [1 if score >= threshold else 0 for score in scores]
         confusion = confusion_matrix(y_true=y, y_pred=binary_scores)
         TN, FP, FN, TP = confusion.flat
@@ -189,10 +175,5 @@ def find_TPR_threshold(y, scores, desired_TPR):
             threshold -= 0.01
         else:
             threshold -= 0.001
-        #print("the desired TPR", desired_TPR)
-        #print("Current threshold", threshold)
-        #print("Current TPR", TPR)
-
-    print("Returned", threshold, FPR)
 
     return threshold, FPR

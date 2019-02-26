@@ -155,11 +155,6 @@ def find_TPR_threshold(y, scores, desired_TPR):
     ...
     threshold = 1.0
     TPR = 0.0
-    #binary_scores = [1 if score >= threshold else 0 for score in scores]
-    #confusion = confusion_matrix(y_true=y, y_pred=binary_scores)
-    #TN, FP, FN, TP = confusion.flat
-    #TPR = TP / (TP + FN)
-    #FPR = FP / (FP + TN)
     while TPR < desired_TPR and threshold != 0:
         binary_scores = [1 if score >= threshold else 0 for score in scores]
         confusion = confusion_matrix(y_true=y, y_pred=binary_scores)

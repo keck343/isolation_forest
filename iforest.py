@@ -51,10 +51,10 @@ class IsolationTreeEnsemble:
 
         avg_lens = np.array([[0]])
         for i in range(X.shape[0]):
-            x_i_lens = []
+            x_i_lens = 0  # list orginally, sum to OPTIMIZE
             for t in range(1, self.n_trees):
-                x_i_lens.append(self.single_path_len(self.trees[t], X[i]))
-            avg_l = sum(x_i_lens)/self.n_trees
+                x_i_lens += self.single_path_len(self.trees[t], X[i])
+            avg_l = x_i_lens/self.n_trees
             avg_lens = np.append(avg_lens, [[avg_l]], axis=0)
         return avg_lens[1:]
 
@@ -91,7 +91,7 @@ class IsolationTreeEnsemble:
 
 
 class inTreeNode:
-    def __init__(self,  split_point, left=None, right=None, split_att=None, n_nodes=0):
+    def __init__(self,  split_point, left=None, right=None, split_att=None, n_nodes=1):
         self.split_point = split_point
         self.left = left
         self.right = right
@@ -117,7 +117,7 @@ class IsolationTree:
         self.n_nodes = n_nodes
 
 
-    def fit(self, X:np.ndarray, improved=False):
+    def fit(self, X:np.ndarray, improved=False, n_nodes=1):
         """
         Given a 2D matrix of observations, create an isolation tree. Set field
         self.root to the root of that tree and return it.
@@ -125,19 +125,18 @@ class IsolationTree:
         and switch to your new functionality else fall back on your original code.
         """
         if self.height_limit == 0 or len(X) <= 1:
-            self.n_nodes += 1
             return exTreeNode(size=len(X))
         else:
-            self.n_nodes += 1
             q = np.random.randint(X.shape[1])
             column = X[:,q]
             p = np.random.uniform(min(column), max(column))
             X_left = X[p>X[:,q]]
             X_right = X[p<=X[:,q]]
             self.root = inTreeNode(split_point=p, split_att= q,
-                                left=IsolationTree(height_limit=self.height_limit-1, n_nodes=self.n_nodes).fit(X_left),
-                                right=IsolationTree(height_limit=self.height_limit-1, n_nodes=self.n_nodes).fit(X_right))
-            self.root.n_nodes = self.n_nodes
+                                left=IsolationTree(height_limit=self.height_limit-1, n_nodes=self.n_nodes+2).fit(X_left, n_nodes+2),
+                                right=IsolationTree(height_limit=self.height_limit-1, n_nodes=self.n_nodes+2).fit(X_right, n_nodes+2))
+            self.root.n_nodes += self.n_nodes + 2
+        self.root.n_nodes +=  1
 
 
         return self.root
@@ -161,7 +160,7 @@ def find_TPR_threshold(y, scores, desired_TPR):
         TN, FP, FN, TP = confusion.flat
         TPR = TP / (TP + FN)
         FPR = FP / (FP + TN)
-        threshold -= 0.001
+        threshold -= 0.01
 
 
     return threshold, FPR

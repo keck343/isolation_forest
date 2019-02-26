@@ -20,7 +20,7 @@ class IsolationTreeEnsemble:
             X = X.values
         for i in range(self.n_trees):
             X_prime = X[np.random.choice(X.shape[0], self.sample_size, replace=False)]
-            self.trees.append(IsolationTree(height_limit=np.log2(self.sample_size), e=0).fit(X=X_prime))
+            self.trees.append(IsolationTree(height_limit=int(np.ceil(np.log2(self.sample_size))), e=0).fit(X=X_prime))
 
         return self
 

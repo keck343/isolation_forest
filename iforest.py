@@ -20,18 +20,19 @@ class IsolationTreeEnsemble:
             X = X.values
         for i in range(self.n_trees):
             X_prime = X[np.random.choice(X.shape[0], self.sample_size, replace=False)]
-            self.trees.append(IsolationTree(height_limit=int(np.ceil(np.log2(self.sample_size))), e=0).fit(X=X_prime))
+            self.trees.append(IsolationTree(height_limit=int(np.ceil(np.log2(self.sample_size)))).fit(X=X_prime))
 
         return self
 
     def c(self, size):
-        if size <= 2:
+        if size == 2:
             return 1
+        if size <= 2:
+            return 0
         return 2*(np.log(size-1)+0.5772156649)-2*(size-1)/size
 
     def single_path_len(self, tree, x_i, e=0): # single tree and single element in X
         if isinstance(tree, exTreeNode):
-            e += 1
             return e + self.c(tree.size)
         a = tree.split_att # index of column of X
         if x_i[a] < tree.split_point:
@@ -48,14 +49,14 @@ class IsolationTreeEnsemble:
         ndarray of shape (len(X),1).
         """
 
-        avg_lens = []
+        avg_lens = np.array([[0]])
         for i in range(X.shape[0]):
-            e = 0
             x_i_lens = []
-            for t in range(self.n_trees):
+            for t in range(1, self.n_trees):
                 x_i_lens.append(self.single_path_len(self.trees[t], X[i]))
-            avg_lens.append(np.mean(x_i_lens))
-        return np.array(avg_lens)
+            avg_l = sum(x_i_lens)/self.n_trees
+            avg_lens = np.append(avg_lens, [[avg_l]], axis=0)
+        return avg_lens[1:]
 
 
     def anomaly_score(self, X:np.ndarray) -> np.ndarray:
@@ -68,7 +69,8 @@ class IsolationTreeEnsemble:
         scores = []
         path_X = self.path_length(X)
         for i in range(path_X.shape[0]):
-            scores.append(2**(-1*(path_X[i]/self.c(self.sample_size))))
+            s = 2**(-1*(path_X[i])/(self.c(self.sample_size)))
+            scores.append(s)
         return np.array(scores)
 
 
@@ -78,12 +80,8 @@ class IsolationTreeEnsemble:
         Given an array of scores and a score threshold, return an array of
         the predictions: 1 for any score >= the threshold and 0 otherwise.
         """
-        for i in range(scores.shape[0]):
-            if scores[i] >= threshold:
-                scores[i] = 1
-            else:
-                scores[i] = 0
-        return scores
+        binary_scores = [1 if score >= threshold else 0 for score in scores]
+        return binary_scores
 
     def predict(self, X:np.ndarray, threshold:float) -> np.ndarray:
         "A shorthand for calling anomaly_score() and predict_from_anomaly_scores()."
@@ -114,11 +112,10 @@ class exTreeNode:
 
 
 class IsolationTree:
-    def __init__(self, height_limit, n_nodes=1, e=1):  #n_nodes= 0, e = 0
+    def __init__(self, height_limit, n_nodes=1):  #n_nodes= 0, e = 0
         self.height_limit = height_limit
         self.n_nodes = n_nodes
-        self.e = e
-        # self.root = None
+
 
     def fit(self, X:np.ndarray, improved=False):
         """
@@ -127,13 +124,10 @@ class IsolationTree:
         If you are working on an improved algorithm, check parameter "improved"
         and switch to your new functionality else fall back on your original code.
         """
-        if self.e >= self.height_limit or len(X) <= 1:
-            self.e += 1
+        if self.height_limit == 0 or len(X) <= 1:
             self.n_nodes += 1
-            #print(self.e)
-            return exTreeNode(size=len(X), depth=self.e+1)
+            return exTreeNode(size=len(X))
         else:
-            self.e += 1
             self.n_nodes += 1
             q = np.random.randint(X.shape[1])
             column = X[:,q]
@@ -141,8 +135,8 @@ class IsolationTree:
             X_left = X[p>X[:,q]]
             X_right = X[p<=X[:,q]]
             self.root = inTreeNode(split_point=p, split_att= q,
-                                left=IsolationTree(height_limit=self.height_limit-1, n_nodes=self.n_nodes, e=self.e+1).fit(X_left),  ## NEEDS TO BE ALL THE COLUMNS
-                                right=IsolationTree(height_limit=self.height_limit-1, n_nodes=self.n_nodes, e=self.e+1).fit(X_right))
+                                left=IsolationTree(height_limit=self.height_limit-1, n_nodes=self.n_nodes).fit(X_left),
+                                right=IsolationTree(height_limit=self.height_limit-1, n_nodes=self.n_nodes).fit(X_right))
             self.root.n_nodes = self.n_nodes
 
 
@@ -160,11 +154,12 @@ def find_TPR_threshold(y, scores, desired_TPR):
     """
     ...
     threshold = 1.0
-    binary_scores = [1 if score >= threshold else 0 for score in scores]
-    confusion = confusion_matrix(y_true=y, y_pred=binary_scores)
-    TN, FP, FN, TP = confusion.flat
-    TPR = TP / (TP + FN)
-    FPR = FP / (FP + TN)
+    TPR = 0.0
+    #binary_scores = [1 if score >= threshold else 0 for score in scores]
+    #confusion = confusion_matrix(y_true=y, y_pred=binary_scores)
+    #TN, FP, FN, TP = confusion.flat
+    #TPR = TP / (TP + FN)
+    #FPR = FP / (FP + TN)
     while TPR < desired_TPR and threshold != 0:
         binary_scores = [1 if score >= threshold else 0 for score in scores]
         confusion = confusion_matrix(y_true=y, y_pred=binary_scores)
@@ -172,9 +167,6 @@ def find_TPR_threshold(y, scores, desired_TPR):
         TPR = TP / (TP + FN)
         FPR = FP / (FP + TN)
         threshold -= 0.001
-        #if TPR == 0.0:
-            #threshold -= 0.01
-        #else:
-            #threshold -= 0.001
+
 
     return threshold, FPR

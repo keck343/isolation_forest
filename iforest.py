@@ -61,6 +61,14 @@ class IsolationTreeEnsemble:
             avg_lens = np.append(avg_lens, [[avg_l]], axis=0)
         return avg_lens[1:]
 
+    def path_length(self, X:np.ndarray) -> np.ndarray:
+        matrix_lens = np.zeros((X.shape[0], self.n_trees))
+        for i in range(X.shape[0]):
+            for j in range(self.n_trees):
+                matrix_lens[i, j] = self.single_path_len(self.trees[j], X[i])
+        matrix_means = np.mean(matrix_lens, axis=1)
+        return matrix_means
+
 
     def anomaly_score(self, X:np.ndarray) -> np.ndarray:
         """

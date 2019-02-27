@@ -5,7 +5,7 @@ from sklearn.metrics import confusion_matrix
 # Follows algo from https://cs.nju.edu.cn/zhouzh/zhouzh.files/publication/icdm08b.pdf
 
 class IsolationTreeEnsemble:
-    def __init__(self, sample_size, n_trees=10):
+    def __init__(self, sample_size, n_trees):
         self.sample_size = sample_size
         self.n_trees = n_trees
         self.trees = []
@@ -34,7 +34,7 @@ class IsolationTreeEnsemble:
     def single_path_len(self, tree, x_i, e=0): # single tree and single element in X
         if isinstance(tree, exTreeNode):
             return e + self.c(tree.size)
-        a = tree.split_att # index of column of X
+        a = tree.split_att  # index of column of X
         if x_i[a] < tree.split_point:
             return self.single_path_len(tree.left, x_i, e+1)
         if x_i[a] >= tree.split_point:
@@ -51,8 +51,8 @@ class IsolationTreeEnsemble:
 
         avg_lens = np.array([[0]])
         for i in range(X.shape[0]):
-            x_i_lens = 0  # list orginally, sum to OPTIMIZE
-            for t in range(1, self.n_trees):
+            x_i_lens = 0  # list orginally, sum to optimize
+            for t in range(0, self.n_trees):
                 x_i_lens += self.single_path_len(self.trees[t], X[i])
             avg_l = x_i_lens/self.n_trees
             avg_lens = np.append(avg_lens, [[avg_l]], axis=0)
@@ -66,12 +66,10 @@ class IsolationTreeEnsemble:
         """
         if isinstance(X, pd.DataFrame):
             X = X.values
-        scores = []
+        c_sample_size = self.c(self.sample_size)
         path_X = self.path_length(X)
-        for i in range(path_X.shape[0]):
-            s = 2**(-1*(path_X[i])/(self.c(self.sample_size)))
-            scores.append(s)
-        return np.array(scores)
+        scores = 2**(-1.0*path_X/c_sample_size)
+        return scores
 
 
 
@@ -112,19 +110,19 @@ class exTreeNode:
 
 
 class IsolationTree:
-    def __init__(self, height_limit, n_nodes=1):  #n_nodes= 0, e = 0
+    def __init__(self, height_limit):
         self.height_limit = height_limit
-        self.n_nodes = n_nodes
 
 
-    def fit(self, X:np.ndarray, improved=False, n_nodes=1):
+    def fit(self, X:np.ndarray, improved=False, n_nodes=1, e=0):
         """
         Given a 2D matrix of observations, create an isolation tree. Set field
         self.root to the root of that tree and return it.
         If you are working on an improved algorithm, check parameter "improved"
         and switch to your new functionality else fall back on your original code.
         """
-        if self.height_limit == 0 or len(X) <= 1:
+        #print(e)
+        if e >= self.height_limit  or len(X) <= 1:
             return exTreeNode(size=len(X))
         else:
             q = np.random.randint(X.shape[1])
@@ -132,12 +130,13 @@ class IsolationTree:
             p = np.random.uniform(min(column), max(column))
             X_left = X[p>X[:,q]]
             X_right = X[p<=X[:,q]]
+            n_nodes += 2
+            e += 1
             self.root = inTreeNode(split_point=p, split_att= q,
-                                left=IsolationTree(height_limit=self.height_limit-1, n_nodes=self.n_nodes+2).fit(X_left, n_nodes+2),
-                                right=IsolationTree(height_limit=self.height_limit-1, n_nodes=self.n_nodes+2).fit(X_right, n_nodes+2))
-            self.root.n_nodes += self.n_nodes + 2
-        self.root.n_nodes +=  1
-
+                                left=self.fit(X_left, e=e),
+                                right=self.fit(X_right, e=e))
+            self.root.n_nodes += 2
+        self.root.n_nodes += 1
 
         return self.root
 

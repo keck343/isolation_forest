@@ -31,14 +31,17 @@ class IsolationTreeEnsemble:
             return 0
         return 2*(np.log(size-1)+0.5772156649)-2*(size-1)/size
 
-    def single_path_len(self, tree, x_i, e=0): # single tree and single element in X
-        if isinstance(tree, exTreeNode):
-            return e + self.c(tree.size)
-        a = tree.split_att  # index of column of X
-        if x_i[a] < tree.split_point:
-            return self.single_path_len(tree.left, x_i, e+1)
-        if x_i[a] >= tree.split_point:
-            return self.single_path_len(tree.right, x_i, e+1)
+
+    def single_path_len(self, tree, x_i):
+        e = 0
+        while isinstance(tree, exTreeNode)==False:
+            if x_i[tree.split_att] < tree.split_point:
+                tree = tree.left
+                e += 1
+            else:
+                tree = tree.right
+                e += 1
+        return e
 
 
     def path_length(self, X:np.ndarray) -> np.ndarray:
@@ -159,7 +162,7 @@ def find_TPR_threshold(y, scores, desired_TPR):
         TN, FP, FN, TP = confusion.flat
         TPR = TP / (TP + FN)
         FPR = FP / (FP + TN)
-        threshold -= 0.01
+        threshold -= 0.001
 
 
     return threshold, FPR

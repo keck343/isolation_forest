@@ -41,7 +41,7 @@ class IsolationTreeEnsemble:
             else:
                 tree = tree.right
                 e += 1
-        return e
+        return e + 1
 
 
     def path_length(self, X:np.ndarray) -> np.ndarray:
@@ -112,9 +112,10 @@ class inTreeNode:
         return self.value.__repr__()
 
 class exTreeNode:
-    def __init__(self, size=None, depth=None):
+    def __init__(self, size=None, depth=None, n_nodes=1):
         self.size = size
         self.depth = depth
+        self.n_nodes = n_nodes
 
     def __repr__(self):
         return self.size.__repr__()
@@ -146,8 +147,9 @@ class IsolationTree:
             self.root = inTreeNode(split_point=p, split_att= q,
                                 left=self.fit(X_left, e=e),
                                 right=self.fit(X_right, e=e))
-            self.root.n_nodes += 2
-        self.root.n_nodes += 1
+        self.root.n_nodes += self.root.right.n_nodes
+        self.root.n_nodes += self.root.left.n_nodes
+
 
         return self.root
 

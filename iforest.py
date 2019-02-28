@@ -20,7 +20,7 @@ class IsolationTreeEnsemble:
             X = X.values
         for i in range(self.n_trees):
             X_prime = X[np.random.choice(X.shape[0], self.sample_size, replace=False)]
-            self.trees.append(IsolationTree(height_limit=int(np.ceil(np.log2(self.sample_size)))).fit(X=X_prime))
+            self.trees.append(IsolationTree(height_limit=np.log2(self.sample_size)).fit(X=X_prime))
 
         return self
 
@@ -126,7 +126,7 @@ class IsolationTree:
         self.height_limit = height_limit
 
 
-    def fit(self, X:np.ndarray, improved=False, n_nodes=1, e=0):
+    def fit(self, X:np.ndarray, improved=False, e=0):
         """
         Given a 2D matrix of observations, create an isolation tree. Set field
         self.root to the root of that tree and return it.
@@ -142,7 +142,6 @@ class IsolationTree:
             p = np.random.uniform(min(column), max(column))
             X_left = X[p>X[:,q]]
             X_right = X[p<=X[:,q]]
-            n_nodes += 2
             e += 1
             self.root = inTreeNode(split_point=p, split_att= q,
                                 left=self.fit(X_left, e=e),

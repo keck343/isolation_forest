@@ -140,12 +140,11 @@ class IsolationTree:
             q = np.random.randint(X.shape[1])
             column = X[:,q]
             p = np.random.uniform(min(column), max(column))
-            X_left = X[p>X[:,q]]
-            X_right = X[p<=X[:,q]]
-            e += 1
+            X_left = X[p>column]
+            X_right = X[p<=column]
             self.root = inTreeNode(split_point=p, split_att= q,
-                                left=self.fit(X_left, e=e),
-                                right=self.fit(X_right, e=e))
+                                left=self.fit(X_left, e=e+1),
+                                right=self.fit(X_right, e=e+1))
         self.root.n_nodes += self.root.right.n_nodes
         self.root.n_nodes += self.root.left.n_nodes
 

@@ -41,7 +41,7 @@ class IsolationTreeEnsemble:
             else:
                 tree = tree.right
                 e += 1
-        return e + 1
+        return e
 
 
     def path_length(self, X:np.ndarray) -> np.ndarray:

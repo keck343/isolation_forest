@@ -112,7 +112,7 @@ class inTreeNode:
         return self.value.__repr__()
 
 class exTreeNode:
-    def __init__(self, size=None, depth=None, n_nodes=1):
+    def __init__(self, size=None, depth=None, n_nodes=0):
         self.size = size
         self.depth = depth
         self.n_nodes = n_nodes
@@ -133,20 +133,22 @@ class IsolationTree:
         If you are working on an improved algorithm, check parameter "improved"
         and switch to your new functionality else fall back on your original code.
         """
-        #print(e)
         if e >= self.height_limit  or len(X) <= 1:
             return exTreeNode(size=len(X))
         else:
             q = np.random.randint(X.shape[1])
             column = X[:,q]
-            p = np.random.uniform(min(column), max(column))
+            if improved==True:
+                p_10 = np.random.uniform(min(column), max(column), 10)
+                p = np.random.choice([p_5[0], p_5[9]])
+            else:
+                p = np.random.uniform(min(column), max(column))
             X_left = X[p>column]
             X_right = X[p<=column]
             self.root = inTreeNode(split_point=p, split_att= q,
                                 left=self.fit(X_left, e=e+1),
                                 right=self.fit(X_right, e=e+1))
-        self.root.n_nodes += self.root.right.n_nodes
-        self.root.n_nodes += self.root.left.n_nodes
+        self.root.n_nodes += self.root.right.n_nodes + self.root.left.n_nodes
 
 
         return self.root

@@ -153,8 +153,6 @@ class IsolationTree:
 
         return self.root
 
-# https://stackoverflow.com/questions/13066249/filtering-lines-in-a-numpy-array-according-to-values-in-a-range
-# https://stackoverflow.com/questions/14262654/numpy-get-random-set-of-rows-from-2d-array
 
 def find_TPR_threshold(y, scores, desired_TPR):
     """
